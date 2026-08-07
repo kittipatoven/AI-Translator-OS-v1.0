@@ -1,0 +1,8 @@
+{
+  "key": "th-ar",
+  "name": "ไทย → AR",
+  "source": "tha_Thai",
+  "target": "ara_Arab",
+  "whisper_source": "th",
+  "piper_voice": null
+}

@@ -1,0 +1,8 @@
+{
+  "key": "hi-th",
+  "name": "HI → ไทย",
+  "source": "hin_Deva",
+  "target": "tha_Thai",
+  "whisper_source": "hi",
+  "piper_voice": null
+}

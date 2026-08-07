@@ -1,0 +1,8 @@
+{
+  "key": "ja-th",
+  "name": "JA → ไทย",
+  "source": "jpn_Jpan",
+  "target": "tha_Thai",
+  "whisper_source": "ja",
+  "piper_voice": null
+}

@@ -1,0 +1,8 @@
+{
+  "key": "th-ko",
+  "name": "ไทย → KO",
+  "source": "tha_Thai",
+  "target": "kor_Hang",
+  "whisper_source": "th",
+  "piper_voice": null
+}

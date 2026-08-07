@@ -1,0 +1,8 @@
+{
+  "key": "ru-th",
+  "name": "RU → ไทย",
+  "source": "rus_Cyrl",
+  "target": "tha_Thai",
+  "whisper_source": "ru",
+  "piper_voice": null
+}

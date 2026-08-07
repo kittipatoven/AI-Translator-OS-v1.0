@@ -1,0 +1,8 @@
+{
+  "key": "es-th",
+  "name": "ES → ไทย",
+  "source": "spa_Latn",
+  "target": "tha_Thai",
+  "whisper_source": "es",
+  "piper_voice": null
+}

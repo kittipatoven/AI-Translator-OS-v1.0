@@ -1,0 +1,742 @@
+# ==========================================
+# AI Translator OS v1.0
+# Windsurf Rules
+# ==========================================
+
+PROJECT_NAME = AI Translator OS
+
+PROJECT_TYPE = Offline AI Translator
+
+TARGET_DEVICE = Raspberry Pi 3
+
+LANGUAGE = Python 3.11
+
+OS = Raspberry Pi OS Lite 64-bit
+
+CONTAINER = Docker
+
+ARCHITECTURE = Modular
+
+OFFLINE_ONLY = TRUE
+
+NO_EXTERNAL_API = TRUE
+
+NO_CLOUD = TRUE
+
+AUTO_START = TRUE
+
+AUTO_RECOVERY = TRUE
+
+AUTO_DIAGNOSTICS = TRUE
+
+AUTO_CONFIGURATION = TRUE
+
+AUTO_LOGGING = TRUE
+
+==========================================
+
+PRIMARY GOAL
+
+==========================================
+
+Build a complete offline AI Translator.
+
+Everything must work locally.
+
+Never depend on online services.
+
+Never require API keys.
+
+Never require internet after installation.
+
+System must automatically start after Raspberry Pi boots.
+
+==========================================
+
+AI PIPELINE
+
+==========================================
+
+USB Microphone
+
+↓
+
+Noise Reduction
+
+↓
+
+Voice Activity Detection
+
+↓
+
+Whisper.cpp
+
+↓
+
+Custom Dictionary
+
+↓
+
+Translation Rule Engine
+
+↓
+
+NLLB-200 Quantized
+
+↓
+
+Back Translation
+
+↓
+
+Confidence Score
+
+↓
+
+Piper TTS
+
+↓
+
+USB Speaker
+
+==========================================
+
+SUPPORTED LANGUAGES
+
+==========================================
+
+Thai
+
+English
+
+Chinese
+
+Korean
+
+Myanmar
+
+Design system to support unlimited future languages.
+
+==========================================
+
+HARDWARE
+
+==========================================
+
+LCD1602 I2C
+
+USB Microphone
+
+USB Speaker
+
+5 Push Buttons
+
+microSD
+
+==========================================
+
+LCD PINS
+
+==========================================
+
+GND Pin 6
+
+VCC Pin 2
+
+SDA GPIO2
+
+SCL GPIO3
+
+==========================================
+
+BUTTON GPIO
+
+==========================================
+
+LEFT GPIO17
+
+RIGHT GPIO27
+
+SPEAK GPIO22
+
+REPLAY GPIO23
+
+MENU GPIO24
+
+Internal Pull-Up
+
+All buttons connect to GND.
+
+==========================================
+
+PROJECT STRUCTURE
+
+==========================================
+
+Every module must have only one responsibility.
+
+Never write one giant file.
+
+Create folders:
+
+src/
+
+modules/
+
+config/
+
+logs/
+
+models/
+
+dictionary/
+
+history/
+
+cache/
+
+scripts/
+
+docker/
+
+tests/
+
+==========================================
+
+MODULES
+
+==========================================
+
+BootManager
+
+LCDManager
+
+ButtonManager
+
+AudioManager
+
+NoiseReduction
+
+VoiceActivityDetection
+
+SpeechManager
+
+TranslationManager
+
+TTSManager
+
+ConversationManager
+
+DictionaryManager
+
+TranslationRuleEngine
+
+BackTranslationManager
+
+ConfidenceScoreManager
+
+LanguagePackManager
+
+ModelManager
+
+ResourceManager
+
+WatchdogManager
+
+DiagnosticsManager
+
+LoggingManager
+
+ConfigurationManager
+
+BackupManager
+
+UpdateManager
+
+StorageManager
+
+SystemManager
+
+==========================================
+
+BOOT PROCESS
+
+==========================================
+
+Power On
+
+↓
+
+Linux
+
+↓
+
+Docker
+
+↓
+
+Diagnostics
+
+↓
+
+Model Check
+
+↓
+
+Resource Check
+
+↓
+
+Language Pack Check
+
+↓
+
+Translator
+
+↓
+
+Ready
+
+==========================================
+
+MODEL MANAGER
+
+==========================================
+
+Verify
+
+Whisper
+
+NLLB
+
+Piper
+
+Check
+
+Exist
+
+Version
+
+Checksum
+
+Integrity
+
+Never start translation if required model is missing.
+
+==========================================
+
+RESOURCE MANAGER
+
+==========================================
+
+Monitor
+
+CPU
+
+RAM
+
+Temperature
+
+Storage
+
+Automatically
+
+Rotate Logs
+
+Clean Cache
+
+Delete Temporary Files
+
+Warn user when storage is low.
+
+==========================================
+
+WATCHDOG
+
+==========================================
+
+Monitor
+
+Main Program
+
+Whisper
+
+NLLB
+
+Piper
+
+Docker
+
+Restart only failed module.
+
+Never reboot Raspberry Pi unless system failure.
+
+==========================================
+
+TRANSLATION RULES
+
+==========================================
+
+Never translate
+
+CPU
+
+GPU
+
+RAM
+
+ROM
+
+SSD
+
+HDD
+
+NVMe
+
+PCIe
+
+BIOS
+
+UEFI
+
+Docker
+
+Docker Compose
+
+Git
+
+GitHub
+
+VS Code
+
+Python
+
+Node.js
+
+Windows
+
+Linux
+
+Ubuntu
+
+Raspberry Pi
+
+ESP32
+
+Intel
+
+AMD
+
+NVIDIA
+
+ASUS
+
+MSI
+
+Gigabyte
+
+Kingston
+
+Samsung
+
+HP
+
+Dell
+
+Lenovo
+
+Acer
+
+Translate descriptions only.
+
+==========================================
+
+CUSTOM DICTIONARY
+
+==========================================
+
+Load automatically.
+
+Support
+
+5000+
+
+Technical computer terms.
+
+Future support
+
+10000+
+
+Terms.
+
+==========================================
+
+UI
+
+==========================================
+
+LCD
+
+Display
+
+Ready
+
+Listening
+
+Thinking
+
+Translating
+
+Speaking
+
+Sleep
+
+Error
+
+Progress
+
+Menu
+
+==========================================
+
+BUTTONS
+
+==========================================
+
+LEFT
+
+Previous Language
+
+RIGHT
+
+Next Language
+
+SPEAK
+
+Start Translation
+
+REPLAY
+
+Replay Last Audio
+
+MENU
+
+Open Settings
+
+==========================================
+
+MENU
+
+==========================================
+
+Language
+
+Conversation Mode
+
+Volume
+
+Voice Speed
+
+Translation History
+
+Diagnostics
+
+About
+
+Shutdown
+
+Reboot
+
+==========================================
+
+CONVERSATION MODE
+
+==========================================
+
+Support
+
+TH ⇄ EN
+
+TH ⇄ ZH
+
+TH ⇄ KO
+
+TH ⇄ MY
+
+Automatically wait for next speech.
+
+==========================================
+
+TRANSLATION HISTORY
+
+==========================================
+
+Save
+
+Source Text
+
+Translated Text
+
+Audio
+
+Timestamp
+
+Confidence
+
+Language Pair
+
+==========================================
+
+LOGGING
+
+==========================================
+
+Create
+
+system.log
+
+translation.log
+
+audio.log
+
+error.log
+
+performance.log
+
+Rotate logs automatically.
+
+==========================================
+
+CONFIGURATION
+
+==========================================
+
+Use JSON
+
+Store
+
+Language
+
+Volume
+
+Voice Speed
+
+Sleep Time
+
+Conversation Mode
+
+Dictionary
+
+Models
+
+==========================================
+
+CODING RULES
+
+==========================================
+
+Always use OOP.
+
+Use type hints.
+
+Use dataclass when appropriate.
+
+PEP8 only.
+
+No duplicated code.
+
+No hardcoded paths.
+
+Use pathlib.
+
+Handle every exception.
+
+Every function must have docstring.
+
+Every module must include logging.
+
+Prefer async only where beneficial.
+
+==========================================
+
+ERROR HANDLING
+
+==========================================
+
+Never crash.
+
+Always log.
+
+Always recover.
+
+Always notify user.
+
+==========================================
+
+TESTING
+
+==========================================
+
+Every module must have tests.
+
+Hardware detection tests.
+
+Translation tests.
+
+Audio tests.
+
+GPIO tests.
+
+Model integrity tests.
+
+==========================================
+
+DOCKER
+
+==========================================
+
+Everything runs inside Docker.
+
+Use docker-compose.
+
+Healthcheck required.
+
+Restart policy always.
+
+Volumes
+
+models
+
+logs
+
+config
+
+history
+
+dictionary
+
+==========================================
+
+FINAL GOAL
+
+==========================================
+
+Professional
+
+Offline
+
+Reliable
+
+Maintainable
+
+Expandable
+
+Stable
+
+Easy to use
+
+Computer Technical Translator
+
+Optimized for Raspberry Pi 3
+
+Never sacrifice stability for unnecessary features.

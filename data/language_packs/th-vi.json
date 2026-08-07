@@ -1,0 +1,8 @@
+{
+  "key": "th-vi",
+  "name": "ไทย → VI",
+  "source": "tha_Thai",
+  "target": "vie_Latn",
+  "whisper_source": "th",
+  "piper_voice": null
+}

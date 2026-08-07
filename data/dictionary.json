@@ -1,0 +1,68 @@
+{
+  "Docker": {
+    "translations": {
+      "tha_Thai": "Docker"
+    },
+    "do_not_translate": true
+  },
+  "CPU": {
+    "translations": {
+      "tha_Thai": "CPU"
+    },
+    "do_not_translate": true
+  },
+  "GPU": {
+    "translations": {
+      "tha_Thai": "GPU"
+    },
+    "do_not_translate": true
+  },
+  "RAM": {
+    "translations": {
+      "tha_Thai": "RAM"
+    },
+    "do_not_translate": true
+  },
+  "SSD": {
+    "translations": {
+      "tha_Thai": "SSD"
+    },
+    "do_not_translate": true
+  },
+  "Raspberry Pi": {
+    "translations": {
+      "tha_Thai": "Raspberry Pi"
+    },
+    "do_not_translate": true
+  },
+  "BIOS": {
+    "translations": {
+      "tha_Thai": "BIOS"
+    },
+    "do_not_translate": true
+  },
+  "UEFI": {
+    "translations": {
+      "tha_Thai": "UEFI"
+    },
+    "do_not_translate": true
+  },
+  "install": {
+    "translations": {
+      "tha_Thai": "ติดตั้ง"
+    },
+    "do_not_translate": false
+  },
+  "update": {
+    "translations": {
+      "tha_Thai": "อัปเดต"
+    },
+    "do_not_translate": false
+  },
+  "programming": {
+    "translations": {
+      "tha_Thai": "การเขียนโปรแกรม"
+    },
+    "do_not_translate": false
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "key": "th-id",
+  "name": "ไทย → ID",
+  "source": "tha_Thai",
+  "target": "ind_Latn",
+  "whisper_source": "th",
+  "piper_voice": null
+}

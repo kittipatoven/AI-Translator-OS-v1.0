@@ -1,0 +1,42 @@
+{
+  "lcd": {
+    "i2c_bus": 1,
+    "i2c_address": 39
+  },
+  "buttons": {
+    "left": 17,
+    "right": 27,
+    "speak": 22,
+    "replay": 23,
+    "menu": 24
+  },
+  "audio": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "format": "int16",
+    "chunk_duration_ms": 100,
+    "record_dir": "/app/data/recordings",
+    "play_dir": "/app/data/tts",
+    "device_input": "default",
+    "device_output": "default"
+  },
+  "models": {
+    "whisper_dir": "/app/models/whisper",
+    "nllb_dir": "/app/models/nllb",
+    "piper_dir": "/app/models/piper"
+  },
+  "languages": {
+    "source": "eng_Latn",
+    "target": "tha_Thai"
+  },
+  "conversation_mode": true,
+  "volume": 80,
+  "voice_speed": 1.0,
+  "sleep_time": 60,
+  "theme": "default",
+  "dictionary_path": "/app/data/dictionary.json",
+  "history_path": "/app/data/history.jsonl",
+  "logs_dir": "/app/logs",
+  "storage_threshold_percent": 85,
+  "confidence_threshold": 0.7
+}

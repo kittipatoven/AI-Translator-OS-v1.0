@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.cache/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+data/history.jsonl
+data/recordings/
+data/tts/
+cache/
+
+# Large AI models — download on target device with scripts/download_models.py
+models/
+
+# Misc junk
+New Text Document.txt

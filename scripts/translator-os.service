@@ -1,0 +1,15 @@
+[Unit]
+Description=AI Translator OS
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/translator
+ExecStart=/usr/bin/docker compose -f /opt/translator/docker-compose.yml up -d
+ExecStop=/usr/bin/docker compose -f /opt/translator/docker-compose.yml down
+User=pi
+
+[Install]
+WantedBy=multi-user.target

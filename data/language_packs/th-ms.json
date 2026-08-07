@@ -1,0 +1,8 @@
+{
+  "key": "th-ms",
+  "name": "ไทย → MS",
+  "source": "tha_Thai",
+  "target": "msa_Latn",
+  "whisper_source": "th",
+  "piper_voice": null
+}

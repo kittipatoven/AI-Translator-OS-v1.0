@@ -1,0 +1,8 @@
+{
+  "key": "th-lo",
+  "name": "ไทย → LO",
+  "source": "tha_Thai",
+  "target": "lao_Laoo",
+  "whisper_source": "th",
+  "piper_voice": null
+}

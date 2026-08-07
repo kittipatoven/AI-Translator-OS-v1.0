@@ -1,0 +1,8 @@
+{
+  "key": "th-my",
+  "name": "ไทย → MY",
+  "source": "tha_Thai",
+  "target": "mya_Mymr",
+  "whisper_source": "th",
+  "piper_voice": null
+}

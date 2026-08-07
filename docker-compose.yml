@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  translator:
+    build: .
+    privileged: true
+    network_mode: none
+    restart: always
+    environment:
+      - CONFIG_PATH=/app/config/config.json
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - /dev:/dev
+      - /run/udev:/run/udev:ro
+    devices:
+      - /dev/i2c-1
+      - /dev/snd

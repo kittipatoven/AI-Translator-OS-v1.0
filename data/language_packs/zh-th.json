@@ -1,0 +1,8 @@
+{
+  "key": "zh-th",
+  "name": "ZH → ไทย",
+  "source": "zho_Hans",
+  "target": "tha_Thai",
+  "whisper_source": "zh",
+  "piper_voice": null
+}
