@@ -37,6 +37,16 @@ log "Installing AI Translator OS to ${APP_DIR}..."
 
 # 2. Install required host packages
 log "Updating package lists and installing host dependencies..."
+
+# Stop package manager background services that may lock apt
+for svc in packagekit packagekitd apt-daily apt-daily-upgrade; do
+    if systemctl is-active --quiet "${svc}" 2>/dev/null; then
+        log "Stopping ${svc} to free apt lock..."
+        systemctl stop "${svc}" 2>/dev/null || true
+    fi
+done
+sleep 2
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q --no-install-recommends \
