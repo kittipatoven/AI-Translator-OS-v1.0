@@ -42,6 +42,7 @@ apt-get update -q
 apt-get install -y -q --no-install-recommends \
     curl rsync i2c-tools alsa-utils git \
     build-essential cmake libopenblas-dev libgomp1 libatomic1 \
+    python3-pip \
     || error "apt-get install failed"
 
 # 3. Install Docker if not present
@@ -109,6 +110,12 @@ if [[ ${missing} -eq 1 ]]; then
     if ping -q -c 1 1.1.1.1 &> /dev/null; then
         log "Network available. Attempting to download models..."
         cd "${APP_DIR}"
+        if ! python3 -c "import huggingface_hub" 2>/dev/null; then
+            log "Installing huggingface_hub..."
+            pip3 install --break-system-packages huggingface_hub 2>/dev/null || \
+                pip3 install huggingface_hub || \
+                log "WARNING: failed to install huggingface_hub"
+        fi
         python3 scripts/download_models.py --all --output models || \
             log "Model download script failed. Please copy models manually."
     else
