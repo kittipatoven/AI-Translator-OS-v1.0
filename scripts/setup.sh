@@ -45,6 +45,24 @@ for svc in packagekit packagekitd apt-daily apt-daily-upgrade; do
         systemctl stop "${svc}" 2>/dev/null || true
     fi
 done
+
+# Force-kill any remaining package manager processes
+for p in packagekitd apt-daily apt-daily-upgrade; do
+    pids="$(pgrep -x "${p}" 2>/dev/null || true)"
+    if [[ -n "${pids}" ]]; then
+        log "Killing remaining ${p} processes..."
+        kill -9 ${pids} 2>/dev/null || true
+    fi
+done
+
+# Wait up to 60s for apt lists lock
+for i in $(seq 1 60); do
+    if [[ ! -e /var/lib/apt/lists/lock ]] || ! pgrep -x packagekitd >/dev/null 2>&1; then
+        break
+    fi
+    log "Waiting for apt lock... ${i}s"
+    sleep 1
+done
 sleep 2
 
 export DEBIAN_FRONTEND=noninteractive
