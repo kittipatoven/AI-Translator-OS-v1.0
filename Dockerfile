@@ -1,8 +1,8 @@
 FROM python:3.11-slim-bullseye AS whisper-builder
 
 ARG JOBS=1
-ARG WHISPER_NO_AVX=0
-ARG WHISPER_NO_ACCELERATE=0
+
+ENV CMAKE_BUILD_PARALLEL_LEVEL=${JOBS}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git build-essential cmake libopenblas-dev libgomp1 \
@@ -10,8 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git /tmp/whisper.cpp && \
     cd /tmp/whisper.cpp && \
-    make -j${JOBS} whisper-cli && \
-    cp whisper-cli /usr/local/bin/whisper-cli
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF && \
+    cmake --build build -j${JOBS} --config Release && \
+    cp build/bin/whisper-cli /usr/local/bin/whisper-cli
 
 FROM python:3.11-slim-bullseye
 

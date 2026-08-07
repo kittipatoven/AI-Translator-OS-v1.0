@@ -110,6 +110,10 @@ if command -v rsync &> /dev/null; then
         --exclude='__pycache__' \
         --exclude='*.pyc' \
         --exclude='.cache' \
+        --exclude='models' \
+        --exclude='logs' \
+        --exclude='cache' \
+        --exclude='data/history.jsonl' \
         "${PROJECT_ROOT}/" "${APP_DIR}/"
 else
     cp -r "${PROJECT_ROOT}/"* "${APP_DIR}/"
