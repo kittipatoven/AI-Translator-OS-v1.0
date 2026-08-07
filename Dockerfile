@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git /tmp/whisper.cpp && \
     cd /tmp/whisper.cpp && \
-    make -j${JOBS} main && \
-    cp main /usr/local/bin/whisper-cli
+    make -j${JOBS} whisper-cli && \
+    cp whisper-cli /usr/local/bin/whisper-cli
 
 FROM python:3.11-slim-bullseye
 
