@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     i2c-tools libgpiod2 libyaml-0-2 libyaml-dev \
     alsa-utils alsa-oss \
     build-essential libffi-dev wget ca-certificates \
+    espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
 ARG PIPER_VERSION=1.2.0

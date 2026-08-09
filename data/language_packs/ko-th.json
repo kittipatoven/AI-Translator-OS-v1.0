@@ -1,8 +1,11 @@
 {
   "key": "ko-th",
   "name": "KO → ไทย",
+  "display_name": "เกาหลี → ไทย",
   "source": "kor_Hang",
   "target": "tha_Thai",
+  "nllb_direction": "kor_Hang-tha_Thai",
   "whisper_source": "ko",
+  "whisper_model": "base-q5_1",
   "piper_voice": null
 }

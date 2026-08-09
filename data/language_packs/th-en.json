@@ -1,8 +1,11 @@
 {
   "key": "th-en",
   "name": "TH → EN",
+  "display_name": "ไทย → English",
   "source": "tha_Thai",
   "target": "eng_Latn",
+  "nllb_direction": "tha_Thai-eng_Latn",
   "whisper_source": "th",
+  "whisper_model": "base-q5_1",
   "piper_voice": "en_US-lessac-low"
 }

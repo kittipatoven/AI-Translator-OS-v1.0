@@ -9,6 +9,8 @@ Requires:
     pip install huggingface_hub
 """
 import argparse
+import hashlib
+import json
 import os
 from pathlib import Path
 
@@ -33,6 +35,25 @@ NLLB_MODELS = {
 }
 
 
+def _sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _write_manifest(local_dir):
+    manifest = {}
+    for path in sorted(Path(local_dir).rglob("*")):
+        if path.is_file() and path.name != "manifest.json":
+            rel = path.relative_to(local_dir).as_posix()
+            manifest[rel] = _sha256(path)
+    (local_dir / "manifest.json").write_text(
+        json.dumps({"sha256": manifest}, indent=2), encoding="utf-8"
+    )
+
+
 def _download_whisper(variant, output_dir):
     filename = WHISPER_MODELS[variant]
     local_dir = Path(output_dir) / "whisper"
@@ -43,6 +64,7 @@ def _download_whisper(variant, output_dir):
         local_dir=str(local_dir),
         local_dir_use_symlinks=False,
     )
+    _write_manifest(local_dir)
     print(f"[OK] Whisper: {filename} -> {local_dir / filename}")
 
 
@@ -56,6 +78,7 @@ def _download_nllb(variant, output_dir):
         local_dir_use_symlinks=False,
         allow_patterns=["model.bin", "*.json", "*.txt"],
     )
+    _write_manifest(local_dir)
     print(f"[OK] NLLB: {repo_id} -> {local_dir}")
 
 
@@ -76,6 +99,7 @@ def _download_piper(voice, output_dir):
             local_dir=str(local_dir),
             local_dir_use_symlinks=False,
         )
+    _write_manifest(local_dir)
     print(f"[OK] Piper voice: {voice} -> {local_dir / base_path}.onnx")
 
 

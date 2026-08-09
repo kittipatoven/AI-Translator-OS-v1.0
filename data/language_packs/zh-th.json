@@ -1,8 +1,11 @@
 {
   "key": "zh-th",
   "name": "ZH → ไทย",
+  "display_name": "จีน → ไทย",
   "source": "zho_Hans",
   "target": "tha_Thai",
+  "nllb_direction": "zho_Hans-tha_Thai",
   "whisper_source": "zh",
+  "whisper_model": "base-q5_1",
   "piper_voice": null
 }

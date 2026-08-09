@@ -5,6 +5,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from managers.noise_reduction import NoiseReduction
+from managers.voice_activity_detection import VoiceActivityDetection
+
 
 class AudioManager:
     def __init__(self, config):
@@ -29,7 +32,8 @@ class AudioManager:
         except Exception:
             return False
 
-    def record(self, duration=5, output_path=None):
+    def record(self, duration=10, output_path=None):
+        """Record up to `duration` seconds, then apply NR and VAD trimming."""
         if output_path is None:
             output_path = self.record_dir / f"rec_{int(time.time())}.wav"
         output_path = Path(output_path)
@@ -44,9 +48,13 @@ class AudioManager:
         ]
         try:
             subprocess.run(cmd, check=True, capture_output=True)
-            return output_path
         except subprocess.CalledProcessError as exc:
             raise RuntimeError(f"Recording failed: {exc.stderr.decode()}") from exc
+
+        # Run a lightweight offline NR + VAD pipeline.
+        NoiseReduction().process(output_path)
+        VoiceActivityDetection().trim(output_path, output_path)
+        return output_path
 
     def play(self, wav_path):
         wav_path = Path(wav_path)

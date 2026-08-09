@@ -1,8 +1,11 @@
 {
   "key": "th-my",
   "name": "ไทย → MY",
+  "display_name": "ไทย → พม่า",
   "source": "tha_Thai",
   "target": "mya_Mymr",
+  "nllb_direction": "tha_Thai-mya_Mymr",
   "whisper_source": "th",
+  "whisper_model": "base-q5_1",
   "piper_voice": null
 }

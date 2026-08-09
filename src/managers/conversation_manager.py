@@ -23,7 +23,7 @@ class ConversationManager:
         self.current_pack_index = 0
         self._set_language_pair()
         self.listening = False
-        self.record_duration = config.get("audio.record_duration", 5)
+        self.record_timeout = config.get("audio.record_timeout", 10)
 
     def _set_language_pair(self):
         key = self.packs_keys[self.current_pack_index] if self.packs_keys else None
@@ -32,6 +32,7 @@ class ConversationManager:
         self.target_lang = pack.get("target", self.config.get("languages.target"))
         self.source_name = pack.get("name", f"{self.source_lang}")
         self.tts.set_voice(pack.get("piper_voice"))
+        self.tts.set_language(self.target_lang)
 
     def idle(self):
         self.resource.cleanup_if_needed()
@@ -45,7 +46,7 @@ class ConversationManager:
     def _listen(self):
         try:
             self.lcd.display("Listening...", "")
-            wav_path = self.audio.record(duration=self.record_duration)
+            wav_path = self.audio.record(duration=self.record_timeout)
             self.lcd.display("Thinking...", "")
             source_text = self.speech.transcribe(
                 wav_path, language=self._whisper_lang(self.source_lang)
@@ -55,16 +56,16 @@ class ConversationManager:
             translated = self.translation.translate(masked, self.source_lang, self.target_lang)
             translated = self.rule.unmask(translated)
             similarity, _ = self.back.verify(source_text, translated, self.source_lang, self.target_lang)
-            score = self.confidence.score(source_text, translated, similarity)
+            score = self.confidence.score(source_text, translated, similarity, self.source_lang, self.target_lang)
             if not self.confidence.is_confident(score):
                 self.lcd.display("Low Confidence", "Please speak again")
                 self.history.add(source_text, translated, self.source_lang, self.target_lang, score)
                 return
             self.lcd.display("Speaking...", translated[:16])
-            if self.tts.is_model_present():
+            try:
                 tts_path = self.tts.speak(translated)
                 self.audio.play(tts_path)
-            else:
+            except RuntimeError:
                 self.lcd.display("No TTS voice", translated[:16])
             self.history.add(source_text, translated, self.source_lang, self.target_lang, score)
             self.lcd.display("Ready", self.source_name)
