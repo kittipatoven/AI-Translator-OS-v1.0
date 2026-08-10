@@ -66,7 +66,28 @@ done
 sleep 2
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -q
+
+# Tolerate slow / flaky Raspberry Pi mirrors during first-time setup
+APT_CONF_DIR="/etc/apt/apt.conf.d"
+mkdir -p "${APT_CONF_DIR}"
+cat > "${APT_CONF_DIR}/99-translator-network" <<'EOF'
+Acquire::http::Timeout "120";
+Acquire::https::Timeout "120";
+Acquire::ftp::Timeout "120";
+Acquire::Retries "3";
+Acquire::http::Pipeline-Depth "0";
+EOF
+
+if ! apt-get update -q; then
+    log "Primary apt source failed, switching to fallback mirror..."
+    for f in /etc/apt/sources.list.d/*.list /etc/apt/sources.list; do
+        if [[ -f "${f}" ]]; then
+            sed -i 's|raspbian.raspberrypi.com|mirror.debian.org|g' "${f}"
+        fi
+    done
+    apt-get clean
+    apt-get update -q || error "apt-get update failed with fallback mirror"
+fi
 apt-get install -y -q --no-install-recommends \
     curl rsync i2c-tools alsa-utils git \
     build-essential cmake libopenblas-dev libgomp1 libatomic1 \
