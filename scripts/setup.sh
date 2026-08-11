@@ -28,6 +28,11 @@ else
     log "Detected x86_64 host: using -j${JOBS} for whisper.cpp."
 fi
 
+# 0. Architecture check: ctranslate2 and piper only provide wheels/binaries for AArch64
+if [[ "$ARCH" != "aarch64" ]]; then
+    error "AI Translator OS requires a 64-bit (aarch64) Raspberry Pi OS. Detected: ${ARCH}. ctranslate2 and Piper do not support 32-bit ARM. Please re-flash the SD card with Raspberry Pi OS Lite 64-bit."
+fi
+
 # 1. OS check
 if [[ "$(uname -s)" != "Linux" ]]; then
     error "This installer is for Linux/Raspberry Pi only."
