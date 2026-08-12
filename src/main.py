@@ -24,6 +24,7 @@ from managers.logging_manager import LoggingManager
 from managers.watchdog_manager import WatchdogManager
 from managers.conversation_manager import ConversationManager
 from managers.boot_manager import BootManager
+from web_server import WebServer
 
 
 def main():
@@ -79,6 +80,9 @@ def main():
     watchdog = WatchdogManager()
     watchdog.add("main", check_fn=lambda: True, restart_fn=lambda: None)
     watchdog.start()
+
+    web = WebServer(conv)
+    web.start()
 
     lcd.display("Ready", conv.source_name)
     try:

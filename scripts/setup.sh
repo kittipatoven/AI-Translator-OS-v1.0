@@ -174,7 +174,7 @@ if [[ ${missing} -eq 1 ]]; then
                 pip3 install huggingface_hub || \
                 log "WARNING: failed to install huggingface_hub"
         fi
-        python3 scripts/download_models.py --all --output models || \
+        python3 scripts/download_models_offline.py --output models || \
             log "Model download script failed. Please copy models manually."
     else
         log "No network. Please copy pre-downloaded models to models/whisper, models/nllb, models/piper"

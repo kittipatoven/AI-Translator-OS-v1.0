@@ -8,6 +8,10 @@ psutil==6.0.0
 schedule==1.2.2
 PyYAML==6.0.1
 
+# Web UI / API
+flask==3.0.3
+waitress==3.0.0
+
 # AI runtimes (only those the code directly imports)
 ctranslate2==3.24.0
 tokenizers==0.15.2

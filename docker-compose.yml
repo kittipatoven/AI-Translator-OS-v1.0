@@ -5,10 +5,13 @@ services:
       args:
         JOBS: 1
     privileged: true
-    network_mode: none
     restart: always
     environment:
       - CONFIG_PATH=/app/config/config.json
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8080
+    ports:
+      - "8080:8080"
     volumes:
       - ./config:/app/config
       - ./data:/app/data
@@ -19,3 +22,8 @@ services:
     devices:
       - /dev/i2c-1
       - /dev/snd
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/status')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

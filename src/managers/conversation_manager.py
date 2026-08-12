@@ -24,6 +24,7 @@ class ConversationManager:
         self._set_language_pair()
         self.listening = False
         self.record_timeout = config.get("audio.record_timeout", 10)
+        self.last_result = None
 
     def _set_language_pair(self):
         key = self.packs_keys[self.current_pack_index] if self.packs_keys else None
@@ -60,6 +61,13 @@ class ConversationManager:
             if not self.confidence.is_confident(score):
                 self.lcd.display("Low Confidence", "Please speak again")
                 self.history.add(source_text, translated, self.source_lang, self.target_lang, score)
+                self.last_result = {
+                    "source_text": source_text,
+                    "translated": translated,
+                    "source_lang": self.source_lang,
+                    "target_lang": self.target_lang,
+                    "confidence": score,
+                }
                 return
             self.lcd.display("Speaking...", translated[:16])
             try:
@@ -68,6 +76,13 @@ class ConversationManager:
             except RuntimeError:
                 self.lcd.display("No TTS voice", translated[:16])
             self.history.add(source_text, translated, self.source_lang, self.target_lang, score)
+            self.last_result = {
+                "source_text": source_text,
+                "translated": translated,
+                "source_lang": self.source_lang,
+                "target_lang": self.target_lang,
+                "confidence": score,
+            }
             self.lcd.display("Ready", self.source_name)
         except Exception as exc:
             self.lcd.display("Error", str(exc)[:16])
@@ -95,6 +110,43 @@ class ConversationManager:
 
     def toggle_menu(self):
         self.lcd.display("Menu", "Not implemented")
+
+    def set_language_by_key(self, key: str):
+        if key in self.packs_keys:
+            self.current_pack_index = self.packs_keys.index(key)
+            self._set_language_pair()
+            self.lcd.display("Language", self.source_name[:16])
+
+    def get_status(self) -> dict:
+        return {
+            "status": "Listening" if self.listening else "Ready",
+            "language": self.source_name,
+            "language_key": self.packs_keys[self.current_pack_index] if self.packs_keys else None,
+            "last_result": self.last_result,
+        }
+
+    def translate_text(self, text: str) -> dict:
+        if not self.translation.is_model_present():
+            raise RuntimeError("NLLB model is not loaded")
+        prepared = self.dictionary.apply(text, self.target_lang)
+        masked = self.rule.mask(prepared)
+        translated = self.translation.translate(masked, self.source_lang, self.target_lang)
+        translated = self.rule.unmask(translated)
+        similarity, _ = self.back.verify(text, translated, self.source_lang, self.target_lang)
+        score = self.confidence.score(text, translated, similarity, self.source_lang, self.target_lang)
+        tts_path = None
+        try:
+            tts_path = self.tts.speak(translated)
+        except RuntimeError:
+            pass
+        self.history.add(text, translated, self.source_lang, self.target_lang, score)
+        return {
+            "source_text": text,
+            "translated": translated,
+            "confidence": score,
+            "confident": self.confidence.is_confident(score),
+            "tts_path": str(tts_path) if tts_path else None,
+        }
 
     def _whisper_lang(self, lang_code):
         pack = self.packs.get(self.packs_keys[self.current_pack_index]) if self.packs_keys else {}
