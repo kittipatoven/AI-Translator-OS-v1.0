@@ -49,11 +49,6 @@ class TranslationManager:
             and (self.model_dir / "model.bin").exists()
         )
 
-    @staticmethod
-    def _prefix(lang: str) -> str:
-        # NLLB-200 uses FLORES-200 language codes, e.g. "eng_Latn", "tha_Thai".
-        return f"__{lang}__"
-
     def translate(self, text: str, source: str, target: str) -> str:
         if not text:
             return ""
@@ -62,23 +57,24 @@ class TranslationManager:
                 "NLLB model is not loaded. Run: python scripts/download_models.py --nllb"
             )
 
-        src_prefix = self._prefix(source)
-        tgt_prefix = self._prefix(target)
-
-        src = self._tokenizer.encode(f"{src_prefix} {text}")
+        src = self._tokenizer.encode(f"__{source}__ {text}", add_special_tokens=False)
+        tgt = self._tokenizer.encode(f"__{target}__", add_special_tokens=False)
         results = self._translator.translate_batch(
             [src.tokens],
-            target_prefix=[[tgt_prefix]],
-            max_decoding_length=256,
-            beam_size=2,
+            target_prefix=[tgt.tokens],
+            max_decoding_length=128,
+            min_decoding_length=1,
+            beam_size=4,
+            no_repeat_ngram_size=2,
+            repetition_penalty=1.2,
         )
 
         tokens = results[0].hypotheses[0]
         # Drop the forced target-prefix if the model repeated it.
-        if tokens and tokens[0].startswith("__"):
-            tokens = tokens[1:]
-        output = self._tokenizer.decode(tokens)
-
-        if output.startswith(tgt_prefix):
-            output = output[len(tgt_prefix) :].strip()
+        if tokens and tokens[: len(tgt.tokens)] == tgt.tokens:
+            tokens = tokens[len(tgt.tokens) :]
+        token_ids = [
+            i for t in tokens for i in [self._tokenizer.token_to_id(t)] if i is not None
+        ]
+        output = self._tokenizer.decode(token_ids, skip_special_tokens=True)
         return output.strip()

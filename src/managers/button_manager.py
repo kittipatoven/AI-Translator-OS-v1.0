@@ -130,6 +130,17 @@ class ButtonManager:
         except Exception as exc:
             logger.error("Button %s handler error: %s", name, exc)
 
+    def simulate(self, name: str, duration_ms: float = 250.0) -> None:
+        """Simulate a short press for the named button (useful for testing)."""
+        if name not in self._handlers:
+            logger.warning("Unknown button: %s", name)
+            return
+        if duration_ms < self.short_ms:
+            duration_ms = self.short_ms
+        with self._lock:
+            self._buttons[name] = {"pressed_at": time.time() - (duration_ms / 1000.0)}
+        self._handle_release(name)
+
     def stop(self):
         self._running = False
         for t in self._threads:
