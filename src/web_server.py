@@ -26,6 +26,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Translator OS</title>
+  <link rel="icon" href="data:,">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 20px; background: #111; color: #eee; }
     h1 { color: #4f9; }
@@ -175,6 +176,10 @@ class WebServer:
 
     def _create_app(self):
         app = Flask(__name__)
+
+        @app.route("/favicon.ico")
+        def favicon():
+            return "", 204
 
         @app.route("/")
         def index():
