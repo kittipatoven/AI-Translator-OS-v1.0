@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import shutil
 import time
 import wave
@@ -39,6 +40,43 @@ class AudioManager:
         self.play_dir = Path(config.get("audio.play_dir", "/app/data/tts"))
         self.record_dir.mkdir(parents=True, exist_ok=True)
         self.play_dir.mkdir(parents=True, exist_ok=True)
+        self._detect_alsa_devices()
+
+    @staticmethod
+    def _first_alsa_device(cmd):
+        """Return the first usable ALSA card/device for arecord/aplay as plughw:X,Y."""
+        try:
+            out = subprocess.check_output([cmd, "-l"], text=True, stderr=subprocess.DEVNULL)
+        except Exception:
+            return None
+        cards = []
+        for line in out.splitlines():
+            m = re.match(r"^card\s+(\d+):[^,]+,\s*device\s+(\d+):", line.strip())
+            if m:
+                cards.append((int(m.group(1)), int(m.group(2)), line))
+        built_in = ["vc4hdmi", "bcm2835", "hdmi", "dummy"]
+        for card, dev, line in cards:
+            if not any(b in line.lower() for b in built_in):
+                return f"plughw:{card},{dev}"
+        if cards:
+            card, dev, _ = cards[0]
+            return f"plughw:{card},{dev}"
+        return None
+
+    def _detect_alsa_devices(self, force=False):
+        """Auto-detect mic/speaker if config is set to auto, or on startup."""
+        if force or self.device_input in ("auto", "default"):
+            found = self._first_alsa_device("arecord")
+            if found:
+                if self.device_input != found:
+                    logger.info("Auto-selected microphone: %s", found)
+                self.device_input = found
+        if force or self.device_output in ("auto", "default"):
+            found = self._first_alsa_device("aplay")
+            if found:
+                if self.device_output != found:
+                    logger.info("Auto-selected speaker: %s", found)
+                self.device_output = found
 
     @staticmethod
     def _has_arecord():
@@ -102,7 +140,7 @@ class AudioManager:
         logger.warning("No audio capture engine available; returning dummy recording")
         return self._record_dummy(output_path)
 
-    def _record_arecord(self, duration, output_path):
+    def _record_arecord(self, duration, output_path, _retry=False):
         cmd = [
             "arecord",
             "-D", self.device_input,
@@ -115,6 +153,12 @@ class AudioManager:
         try:
             subprocess.run(cmd, check=True, capture_output=True)
         except subprocess.CalledProcessError as exc:
+            if not _retry:
+                logger.warning("Recording on %s failed, trying auto-detect", self.device_input)
+                old = self.device_input
+                self._detect_alsa_devices(force=True)
+                if self.device_input != old:
+                    return self._record_arecord(duration, output_path, _retry=True)
             raise RuntimeError(f"Recording failed: {exc.stderr.decode()}") from exc
 
         NoiseReduction().process(output_path)
@@ -166,9 +210,15 @@ class AudioManager:
 
         logger.warning("No playback engine available; skipping playback of %s", wav_path)
 
-    def _play_aplay(self, wav_path):
+    def _play_aplay(self, wav_path, _retry=False):
         cmd = ["aplay", "-D", self.device_output, str(wav_path)]
         try:
             subprocess.run(cmd, check=True, capture_output=True)
         except subprocess.CalledProcessError as exc:
+            if not _retry:
+                logger.warning("Playback on %s failed, trying auto-detect", self.device_output)
+                old = self.device_output
+                self._detect_alsa_devices(force=True)
+                if self.device_output != old:
+                    return self._play_aplay(wav_path, _retry=True)
             raise RuntimeError(f"Playback failed: {exc.stderr.decode()}") from exc
