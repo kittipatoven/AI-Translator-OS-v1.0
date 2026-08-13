@@ -33,6 +33,8 @@ class AudioManager:
     def __init__(self, config):
         self.sample_rate = config.get("audio.sample_rate", 16000)
         self.channels = config.get("audio.channels", 1)
+        self.device_input = config.get("audio.device_input", "default")
+        self.device_output = config.get("audio.device_output", "default")
         self.record_dir = Path(config.get("audio.record_dir", "/app/data/recordings"))
         self.play_dir = Path(config.get("audio.play_dir", "/app/data/tts"))
         self.record_dir.mkdir(parents=True, exist_ok=True)
@@ -103,7 +105,7 @@ class AudioManager:
     def _record_arecord(self, duration, output_path):
         cmd = [
             "arecord",
-            "-D", "default",
+            "-D", self.device_input,
             "-f", "S16_LE",
             "-c", str(self.channels),
             "-r", str(self.sample_rate),
@@ -165,7 +167,7 @@ class AudioManager:
         logger.warning("No playback engine available; skipping playback of %s", wav_path)
 
     def _play_aplay(self, wav_path):
-        cmd = ["aplay", "-D", "default", str(wav_path)]
+        cmd = ["aplay", "-D", self.device_output, str(wav_path)]
         try:
             subprocess.run(cmd, check=True, capture_output=True)
         except subprocess.CalledProcessError as exc:
