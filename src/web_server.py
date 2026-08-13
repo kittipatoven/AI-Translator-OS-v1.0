@@ -62,6 +62,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <button onclick="translateAudio()">แปลเสียง</button>
   </div>
 
+  <h3>บันทึกจากอุปกรณ์</h3>
+  <div class="row">
+    <input type="number" id="recordDuration" value="5" min="1" max="30" style="width:60px">
+    <span class="note" style="margin:auto 0">วินาที</span>
+    <button onclick="recordFromDevice()">เริ่มบันทึก</button>
+  </div>
+
   <h3>TTS</h3>
   <div class="row">
     <input type="text" id="ttsInput" placeholder="ข้อความทีต้องการให้พูด" style="flex:1">
@@ -84,6 +91,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       document.getElementById('langText').textContent = `${s.language || '-'} (${s.language_key || ''})`;
       if (s.last_result) {
         document.getElementById('result').textContent = `ต้นฉบับ: ${s.last_result.source_text}\nแปล: ${s.last_result.translated}\nConfidence: ${s.last_result.confidence}`;
+        if (s.last_result.tts_path) {
+          loadAudio(s.last_result.tts_path);
+        }
       }
     }
 
@@ -127,6 +137,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       const a = document.getElementById('audioPlayer'); a.src = url; a.style.display = 'block'; a.play();
+    }
+
+    async function recordFromDevice() {
+      const duration = parseInt(document.getElementById('recordDuration').value) || 5;
+      const r = await fetch('/api/record', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({duration}) });
+      const s = await r.json();
+      document.getElementById('statusText').textContent = s.status || 'Recording...';
     }
 
     function showResult(j) {
@@ -188,7 +205,14 @@ class WebServer:
 
         @app.route("/api/record", methods=["POST"])
         def record():
-            self.conv.start_listening()
+            data = request.get_json(silent=True) or {}
+            duration = data.get("duration")
+            try:
+                if duration is not None:
+                    duration = max(1, min(int(duration), 60))
+            except (ValueError, TypeError):
+                duration = None
+            self.conv.start_listening(duration=duration)
             return jsonify(self.conv.get_status())
 
         @app.route("/api/translate", methods=["POST"])

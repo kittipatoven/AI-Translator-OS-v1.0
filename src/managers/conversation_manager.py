@@ -38,16 +38,16 @@ class ConversationManager:
     def idle(self):
         self.resource.cleanup_if_needed()
 
-    def start_listening(self):
+    def start_listening(self, duration=None):
         if self.listening:
             return
         self.listening = True
-        threading.Thread(target=self._listen, daemon=True).start()
+        threading.Thread(target=self._listen, args=(duration,), daemon=True).start()
 
-    def _listen(self):
+    def _listen(self, duration=None):
         try:
             self.lcd.display("Listening...", "")
-            wav_path = self.audio.record(duration=self.record_timeout)
+            wav_path = self.audio.record(duration=duration or self.record_timeout)
             self.lcd.display("Thinking...", "")
             source_text = self.speech.transcribe(
                 wav_path, language=self._whisper_lang(self.source_lang)
@@ -70,6 +70,7 @@ class ConversationManager:
                 }
                 return
             self.lcd.display("Speaking...", translated[:16])
+            tts_path = None
             try:
                 tts_path = self.tts.speak(translated)
                 self.audio.play(tts_path)
@@ -82,6 +83,7 @@ class ConversationManager:
                 "source_lang": self.source_lang,
                 "target_lang": self.target_lang,
                 "confidence": score,
+                "tts_path": str(tts_path) if tts_path else None,
             }
             self.lcd.display("Ready", self.source_name)
         except Exception as exc:
