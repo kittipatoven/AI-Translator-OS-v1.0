@@ -28,13 +28,17 @@ class ButtonManager:
             print("[ButtonManager] Running in simulation mode (no GPIO).")
             return
         for name, pin in self.pin_config.items():
-            btn = Button(pin, pull_up=True, bounce_time=0.05)
-            btn.when_pressed = lambda n=name: self._handle_press(n)
-            btn.when_released = lambda n=name: self._handle_release(n)
-            self._buttons[name] = {
-                "button": btn,
-                "pressed_at": None,
-            }
+            try:
+                btn = Button(pin, pull_up=True, bounce_time=0.05)
+                btn.when_pressed = lambda n=name: self._handle_press(n)
+                btn.when_released = lambda n=name: self._handle_release(n)
+                self._buttons[name] = {
+                    "button": btn,
+                    "pressed_at": None,
+                }
+                print(f"[ButtonManager] {name} (GPIO{pin}) registered.")
+            except Exception as exc:
+                print(f"[ButtonManager] Could not register {name} (GPIO{pin}): {exc}")
 
     def _handle_press(self, name):
         with self._lock:

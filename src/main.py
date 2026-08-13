@@ -69,20 +69,23 @@ def main():
         resource=resource,
     )
 
-    buttons = ButtonManager(config.get("buttons"))
-    buttons.on("speak", short=conv.start_listening)
-    buttons.on("replay", short=conv.replay)
-    buttons.on("menu", short=conv.toggle_menu)
-    buttons.on("left", short=conv.previous_language)
-    buttons.on("right", short=conv.next_language)
-    buttons.start()
-
     watchdog = WatchdogManager()
     watchdog.add("main", check_fn=lambda: True, restart_fn=lambda: None)
     watchdog.start()
 
     web = WebServer(conv)
     web.start()
+
+    buttons = ButtonManager(config.get("buttons"))
+    buttons.on("speak", short=conv.start_listening)
+    buttons.on("replay", short=conv.replay)
+    buttons.on("menu", short=conv.toggle_menu)
+    buttons.on("left", short=conv.previous_language)
+    buttons.on("right", short=conv.next_language)
+    try:
+        buttons.start()
+    except Exception as exc:
+        print(f"[main] ButtonManager failed, continuing without GPIO: {exc}")
 
     lcd.display("Ready", conv.source_name)
     try:
