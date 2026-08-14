@@ -32,6 +32,7 @@ class AudioManager:
     """
 
     def __init__(self, config):
+        self.config = config
         self.sample_rate = config.get("audio.sample_rate", 16000)
         self.channels = config.get("audio.channels", 1)
         self.device_input = config.get("audio.device_input", "default")
@@ -222,3 +223,70 @@ class AudioManager:
                 if self.device_output != old:
                     return self._play_aplay(wav_path, _retry=True)
             raise RuntimeError(f"Playback failed: {exc.stderr.decode()}") from exc
+
+    @staticmethod
+    def _list_alsa_devices(cmd):
+        """Return every ALSA card/device reported by arecord/aplay."""
+        try:
+            out = subprocess.check_output([cmd, "-l"], text=True, stderr=subprocess.DEVNULL)
+        except Exception:
+            return []
+        devices = []
+        for line in out.splitlines():
+            line = line.strip()
+            m = re.match(r"^card\s+(\d+):\s*(.+?)\s*,\s*device\s+(\d+):\s*(.*)", line)
+            if not m:
+                continue
+            card = int(m.group(1))
+            card_name = m.group(2).strip()
+            dev = int(m.group(3))
+            dev_name = m.group(4).strip()
+            devices.append(
+                {
+                    "id": f"plughw:{card},{dev}",
+                    "name": f"{card_name} - {dev_name}",
+                    "card": card,
+                    "device": dev,
+                }
+            )
+        return devices
+
+    def list_input_devices(self):
+        if self._has_arecord():
+            return self._list_alsa_devices("arecord")
+        if _HAS_SOUND:
+            try:
+                devices = []
+                for i, d in enumerate(sd.query_devices()):
+                    if d.get("max_input_channels", 0) > 0:
+                        devices.append({"id": i, "name": d.get("name", f"device {i}")})
+                return devices
+            except Exception:
+                return []
+        return []
+
+    def list_output_devices(self):
+        if self._has_aplay():
+            return self._list_alsa_devices("aplay")
+        if _HAS_SOUND:
+            try:
+                devices = []
+                for i, d in enumerate(sd.query_devices()):
+                    if d.get("max_output_channels", 0) > 0:
+                        devices.append({"id": i, "name": d.get("name", f"device {i}")})
+                return devices
+            except Exception:
+                return []
+        return []
+
+    def set_input_device(self, device_id):
+        self.device_input = device_id
+        self.config.set("audio.device_input", device_id)
+        self.config.save()
+        logger.info("Input device set to %s", device_id)
+
+    def set_output_device(self, device_id):
+        self.device_output = device_id
+        self.config.set("audio.device_output", device_id)
+        self.config.save()
+        logger.info("Output device set to %s", device_id)

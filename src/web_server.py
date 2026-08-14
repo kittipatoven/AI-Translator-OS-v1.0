@@ -51,6 +51,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <button onclick="refreshStatus()">รีเฟรช</button>
   </div>
 
+  <h3>อุปกรณ์เสียง</h3>
+  <div class="row">
+    <select id="inputDevice"></select>
+    <select id="outputDevice"></select>
+    <button onclick="saveAudioDevices()">บันทึก</button>
+    <button onclick="loadAudioDevices()">รีเฟรช</button>
+  </div>
+
   <h3>แปลข้อความ</h3>
   <div class="row">
     <input type="text" id="textInput" placeholder="พิมพ์ข้อความ" style="flex:1">
@@ -107,6 +115,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       languages.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = k; sel.appendChild(o); });
     }
 
+    async function loadAudioDevices() {
+      const r = await fetch('/api/audio/devices');
+      const data = await r.json();
+      const inSel = document.getElementById('inputDevice');
+      const outSel = document.getElementById('outputDevice');
+      inSel.innerHTML = '';
+      outSel.innerHTML = '';
+      (data.input || []).forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; o.selected = (d.id === data.current_input); inSel.appendChild(o); });
+      (data.output || []).forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; o.selected = (d.id === data.current_output); outSel.appendChild(o); });
+    }
+
+    async function saveAudioDevices() {
+      const input = document.getElementById('inputDevice').value;
+      const output = document.getElementById('outputDevice').value;
+      await fetch('/api/audio/devices', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({input, output}) });
+      await loadAudioDevices();
+      await refreshStatus();
+    }
+
     async function setLanguage() {
       const key = document.getElementById('languageSelect').value;
       await fetch('/api/language', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({key}) });
@@ -157,6 +184,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     loadLanguages();
+    loadAudioDevices();
     refreshStatus();
     setInterval(refreshStatus, 2000);
   </script>
@@ -219,6 +247,30 @@ class WebServer:
                 duration = None
             self.conv.start_listening(duration=duration)
             return jsonify(self.conv.get_status())
+
+        @app.route("/api/audio/devices", methods=["GET"])
+        def audio_devices():
+            return jsonify({
+                "input": self.conv.audio.list_input_devices(),
+                "output": self.conv.audio.list_output_devices(),
+                "current_input": self.conv.audio.device_input,
+                "current_output": self.conv.audio.device_output,
+            })
+
+        @app.route("/api/audio/devices", methods=["POST"])
+        def set_audio_devices():
+            data = request.get_json(silent=True) or {}
+            in_id = data.get("input")
+            out_id = data.get("output")
+            if in_id is not None:
+                self.conv.audio.set_input_device(in_id)
+            if out_id is not None:
+                self.conv.audio.set_output_device(out_id)
+            return jsonify({
+                "ok": True,
+                "current_input": self.conv.audio.device_input,
+                "current_output": self.conv.audio.device_output,
+            })
 
         @app.route("/api/translate", methods=["POST"])
         def translate():
