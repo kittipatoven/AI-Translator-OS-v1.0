@@ -46,6 +46,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --prefer-binary -r requirements.txt
 
+COPY --from=whisper-builder /tmp/whisper.cpp/build/bin/lib*.so* /usr/local/lib/
+ENV LD_LIBRARY_PATH=/usr/local/piper:/usr/local/lib:${LD_LIBRARY_PATH}
+
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
 COPY tests/ /app/tests/
