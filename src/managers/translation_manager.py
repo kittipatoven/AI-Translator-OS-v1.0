@@ -62,9 +62,9 @@ class TranslationManager:
         results = self._translator.translate_batch(
             [src.tokens],
             target_prefix=[tgt.tokens],
-            max_decoding_length=128,
+            max_decoding_length=64,
             min_decoding_length=1,
-            beam_size=4,
+            beam_size=1,
             no_repeat_ngram_size=2,
             repetition_penalty=1.2,
         )

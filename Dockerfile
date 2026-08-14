@@ -47,6 +47,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY src/ /app/src/
+COPY scripts/ /app/scripts/
 COPY tests/ /app/tests/
 COPY config/ /app/config/
 
