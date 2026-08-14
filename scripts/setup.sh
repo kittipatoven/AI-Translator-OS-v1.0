@@ -154,6 +154,36 @@ mkdir -p "${APP_DIR}/data" \
          "${APP_DIR}/models/nllb" \
          "${APP_DIR}/models/piper"
 
+# 7a. Add swap on low-RAM devices (Pi 3 / 1GB)
+TOTAL_RAM_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
+TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
+if [[ ${TOTAL_RAM_GB} -lt 2 ]]; then
+    if [[ ! -f /swapfile ]]; then
+        log "Low RAM detected (${TOTAL_RAM_GB}GB). Adding 2GB swap..."
+        fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+        chmod 600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+        if ! grep -q "^/swapfile" /etc/fstab; then
+            echo "/swapfile none swap sw 0 0" >> /etc/fstab
+        fi
+    else
+        log "Swap file already exists."
+    fi
+else
+    log "RAM >= 2GB, skipping swap creation."
+fi
+
+# 7b. Extract bundled models.tar.gz if present (offline install)
+for tar_path in "${PROJECT_ROOT}/models.tar.gz" "${APP_DIR}/models.tar.gz"; do
+    if [[ -f "${tar_path}" ]]; then
+        log "Found bundled models at ${tar_path}. Extracting..."
+        tar -xzf "${tar_path}" -C "${APP_DIR}/models/" || \
+            log "WARNING: failed to extract models from ${tar_path}"
+        break
+    fi
+done
+
 # 8. Check / download models
 log "Checking AI models..."
 missing=0
@@ -184,6 +214,7 @@ fi
 # 9. Build the Docker image with platform-specific parallelism
 log "Building Docker image (whisper.cpp will use -j${JOBS})..."
 cd "${APP_DIR}"
+export DOCKER_BUILDKIT=0
 BUILD_SUCCESS=0
 if docker compose build --build-arg "JOBS=${JOBS}"; then
     BUILD_SUCCESS=1
@@ -237,6 +268,14 @@ for d in whisper nllb piper; do
         log "WARNING: /app/models/${d} not found inside container."
     fi
 done
+
+# 15. Power supply sanity check
+if dmesg | grep -qi "Undervoltage detected" 2>/dev/null; then
+    log "======================================================"
+    log "WARNING: Undervoltage detected in dmesg."
+    log "Please use a 5V/2.5A+ power supply to avoid crashes."
+    log "======================================================"
+fi
 
 log "======================================================"
 log "AI Translator OS v1.0 setup complete."
