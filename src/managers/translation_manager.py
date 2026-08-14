@@ -32,7 +32,11 @@ class TranslationManager:
 
             logger.info("Loading NLLB model from %s", self.model_dir)
             self._translator = ctranslate2.Translator(
-                str(self.model_dir), device=self.device
+                str(self.model_dir),
+                device=self.device,
+                compute_type="int8",
+                inter_threads=1,
+                intra_threads=1,
             )
             self._tokenizer = Tokenizer.from_file(
                 str(self.model_dir / "tokenizer.json")
