@@ -189,6 +189,109 @@ class AudioManager:
             wf.writeframes(b"\x00" * (self.sample_rate * self.channels * 2 * seconds))
         return output_path
 
+    def record_vad(self, max_duration=10, output_path=None):
+        """Record until the user stops speaking or max_duration is reached.
+
+        Uses arecord raw PCM streaming and a simple energy-based VAD.
+        Falls back to fixed-duration recording if arecord streaming fails.
+        """
+        if output_path is None:
+            output_path = self.record_dir / f"rec_{int(time.time())}.wav"
+        output_path = Path(output_path)
+
+        if not self._has_arecord():
+            logger.warning("arecord not available; falling back to fixed recording")
+            return self.record(duration=max_duration, output_path=output_path)
+
+        vad = VoiceActivityDetection()
+        frame_ms = vad.frame_ms
+        sample_width = 2
+        frame_size = int(self.sample_rate * (frame_ms / 1000.0) * sample_width * self.channels)
+        if frame_size <= 0:
+            return self.record(duration=max_duration, output_path=output_path)
+
+        ambient_frames = max(1, 300 // frame_ms)
+        silence_frames = max(1, vad.silence_ms // frame_ms)
+        max_frames = int(max_duration * 1000 / frame_ms)
+
+        cmd = [
+            "arecord",
+            "-D", self.device_input,
+            "-f", "S16_LE",
+            "-c", str(self.channels),
+            "-r", str(self.sample_rate),
+            "-t", "raw",
+            "-",
+        ]
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except Exception as exc:
+            logger.warning("arecord VAD start failed: %s", exc)
+            return self.record(duration=max_duration, output_path=output_path)
+
+        def read_exact(stream, n):
+            buf = b""
+            while len(buf) < n:
+                chunk = stream.read(n - len(buf))
+                if not chunk:
+                    return buf
+                buf += chunk
+            return buf
+
+        with wave.open(str(output_path), "wb") as wf:
+            wf.setnchannels(self.channels)
+            wf.setsampwidth(sample_width)
+            wf.setframerate(self.sample_rate)
+
+            # 1) collect initial frames for ambient threshold
+            ambient_buf = b""
+            needed = ambient_frames * frame_size
+            while len(ambient_buf) < needed:
+                chunk = read_exact(proc.stdout, needed - len(ambient_buf))
+                if not chunk:
+                    break
+                ambient_buf += chunk
+                wf.writeframes(chunk)
+
+            ambient_energies = [
+                vad._rms(ambient_buf[i : i + frame_size])
+                for i in range(0, len(ambient_buf) - frame_size + 1, frame_size)
+            ]
+            ambient = sum(ambient_energies) / len(ambient_energies) if ambient_energies else 0.0
+            threshold = max(ambient * vad.energy_factor, 50.0)
+
+            # 2) stream and stop after enough consecutive silence following speech
+            total_frames = len(ambient_buf) // frame_size
+            has_speech = False
+            consecutive_silence = 0
+            try:
+                while total_frames < max_frames:
+                    frame = read_exact(proc.stdout, frame_size)
+                    if not frame:
+                        break
+                    wf.writeframes(frame)
+                    total_frames += 1
+                    rms = vad._rms(frame)
+                    if rms > threshold:
+                        has_speech = True
+                        consecutive_silence = 0
+                    else:
+                        consecutive_silence += 1
+                    if has_speech and consecutive_silence >= silence_frames:
+                        logger.info("VAD silence detected, stopping recording")
+                        break
+            finally:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=2)
+                except Exception:
+                    proc.kill()
+                    proc.wait()
+
+        NoiseReduction().process(output_path)
+        VoiceActivityDetection().trim(output_path, output_path)
+        return output_path
+
     def play(self, wav_path):
         wav_path = Path(wav_path)
         if not wav_path.exists():

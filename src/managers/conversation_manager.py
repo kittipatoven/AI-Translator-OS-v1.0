@@ -38,16 +38,19 @@ class ConversationManager:
     def idle(self):
         self.resource.cleanup_if_needed()
 
-    def start_listening(self, duration=None):
+    def start_listening(self, duration=None, use_vad=False):
         if self.listening:
             return
         self.listening = True
-        threading.Thread(target=self._listen, args=(duration,), daemon=True).start()
+        threading.Thread(target=self._listen, args=(duration, use_vad), daemon=True).start()
 
-    def _listen(self, duration=None):
+    def _listen(self, duration=None, use_vad=False):
         try:
             self.lcd.display("Listening...", "")
-            wav_path = self.audio.record(duration=duration or self.record_timeout)
+            if use_vad:
+                wav_path = self.audio.record_vad(max_duration=duration or self.record_timeout)
+            else:
+                wav_path = self.audio.record(duration=duration or self.record_timeout)
             self.lcd.display("Thinking...", "")
             source_text = self.speech.transcribe(
                 wav_path, language=self._whisper_lang(self.source_lang)

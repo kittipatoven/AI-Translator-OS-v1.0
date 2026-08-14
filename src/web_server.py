@@ -71,11 +71,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <button onclick="translateAudio()">แปลเสียง</button>
   </div>
 
-  <h3>บันทึกจากอุปกรณ์</h3>
+  <h3>บันทึกเสียง (หยุดเมื่อเงียบ)</h3>
   <div class="row">
-    <input type="number" id="recordDuration" value="5" min="1" max="30" style="width:60px">
-    <span class="note" style="margin:auto 0">วินาที</span>
-    <button onclick="recordFromDevice()">เริ่มบันทึก</button>
+    <input type="number" id="recordDuration" value="10" min="1" max="30" style="width:60px">
+    <span class="note" style="margin:auto 0">วินาทีสูงสุด</span>
+    <button onclick="recordFromDevice()">🎤 พูดแล้วปล่อย</button>
   </div>
 
   <h3>TTS</h3>
@@ -168,8 +168,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     async function recordFromDevice() {
-      const duration = parseInt(document.getElementById('recordDuration').value) || 5;
-      const r = await fetch('/api/record', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({duration}) });
+      const duration = parseInt(document.getElementById('recordDuration').value) || 10;
+      const r = await fetch('/api/record', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({duration, use_vad: true}) });
       const s = await r.json();
       document.getElementById('statusText').textContent = s.status || 'Recording...';
     }
@@ -240,12 +240,13 @@ class WebServer:
         def record():
             data = request.get_json(silent=True) or {}
             duration = data.get("duration")
+            use_vad = data.get("use_vad", False)
             try:
                 if duration is not None:
                     duration = max(1, min(int(duration), 60))
             except (ValueError, TypeError):
                 duration = None
-            self.conv.start_listening(duration=duration)
+            self.conv.start_listening(duration=duration, use_vad=use_vad)
             return jsonify(self.conv.get_status())
 
         @app.route("/api/audio/devices", methods=["GET"])
