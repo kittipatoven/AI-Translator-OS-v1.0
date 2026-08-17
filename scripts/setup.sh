@@ -27,6 +27,12 @@ __require_installed() {
     fi
 }
 
+fix_permissions() {
+    log "Setting ownership for ${APP_DIR} to ${PI_USER}..."
+    chown -R "${PI_USER}:${PI_USER}" "${APP_DIR}" 2>/dev/null || true
+    chmod +x "${APP_DIR}/scripts/setup.sh" 2>/dev/null || true
+}
+
 run_diagnostic() {
     __require_installed
     log "Running hardware & AI diagnostics..."
@@ -71,6 +77,7 @@ do_update() {
         --exclude='.cache' --exclude='models' --exclude='logs' \
         --exclude='cache' --exclude='data/history.jsonl' \
         "${PROJECT_ROOT}/" "${APP_DIR}/" || error "rsync failed"
+    fix_permissions
     log "Rebuilding Docker image..."
     cd "${APP_DIR}"
     export DOCKER_BUILDKIT=0
@@ -294,9 +301,11 @@ else
 fi
 
 # 7b. Extract bundled models.tar.gz if present (offline install)
-for tar_path in "${PROJECT_ROOT}/models.tar.gz" "${APP_DIR}/models.tar.gz"; do
+for tar_path in "${PROJECT_ROOT}/models.tar.gz" "${APP_DIR}/models.tar.gz" "/home/${PI_USER}/models.tar.gz"; do
     if [[ -f "${tar_path}" ]]; then
         log "Found bundled models at ${tar_path}. Extracting..."
+        rm -rf "${APP_DIR}/models"
+        mkdir -p "${APP_DIR}/models"
         tar -xzf "${tar_path}" -C "${APP_DIR}/models/" || \
             log "WARNING: failed to extract models from ${tar_path}"
         break
@@ -329,6 +338,8 @@ if [[ ${missing} -eq 1 ]]; then
         log "No network. Please copy pre-downloaded models to models/whisper, models/nllb, models/piper"
     fi
 fi
+
+fix_permissions
 
 # 9. Build the Docker image with platform-specific parallelism
 log "Building Docker image (whisper.cpp will use -j${JOBS})..."
