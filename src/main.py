@@ -29,6 +29,27 @@ from managers.boot_manager import BootManager
 from web_server import WebServer
 
 
+def _total_ram_mb():
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemTotal"):
+                    return int(line.split()[1]) // 1024
+    except Exception:
+        return 0
+    return 0
+
+
+class _NoopTranslator:
+    """Translation passthrough used when there is not enough RAM to load NLLB."""
+
+    def is_model_present(self) -> bool:
+        return False
+
+    def translate(self, text, source_lang, target_lang):
+        return text
+
+
 def main():
     config = ConfigManager()
     log_mgr = LoggingManager(config)
@@ -47,9 +68,17 @@ def main():
 
     audio = AudioManager(config)
     speech = SpeechManager(config.get("models.whisper_dir"))
-    translation = TranslationManager(config.get("models.nllb_dir"))
-    if not translation.is_model_present():
-        lcd.display("ERROR", "Translation Model")
+
+    total_ram_mb = _total_ram_mb()
+    nllb_dir = config.get("models.nllb_dir")
+    if total_ram_mb < 1536:
+        logger.warning("Low RAM (%s MB). NLLB disabled; using passthrough.", total_ram_mb)
+        translation = _NoopTranslator()
+        lcd.display("LOW RAM", "NLLB off")
+    else:
+        translation = TranslationManager(nllb_dir)
+        if not translation.is_model_present():
+            lcd.display("ERROR", "Translation Model")
     tts = TTSManager(config.get("models.piper_dir"))
     dictionary = DictionaryManager(config.get("dictionary_path"))
     rule = RuleEngine(list(dictionary.dictionary.keys()))

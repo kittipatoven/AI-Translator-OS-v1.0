@@ -128,9 +128,11 @@ def main():
 
     # 3. NLLB
     nllb_dir = config.get("models", {}).get("nllb_dir", "/app/models/nllb")
+    tts_language = "tha_Thai"
     if ram < 1536:
         _status("Translation (NLLB)", None, f"{ram} MB RAM (skipped)")
-        translated = "สวัสดี"  # fallback for TTS test
+        translated = "Hello"  # use English fallback for TTS
+        tts_language = "eng_Latn"
         results["nllb"] = None
     else:
         try:
@@ -145,10 +147,12 @@ def main():
             _status("Translation (NLLB)", bool(translated), repr(translated[:40]))
             results["nllb"] = bool(translated)
             if not translated:
-                translated = "สวัสดี"
+                translated = "Hello"
+                tts_language = "eng_Latn"
         except Exception as exc:
             _status("Translation (NLLB)", False, str(exc)[:30])
-            translated = "สวัสดี"
+            translated = "Hello"
+            tts_language = "eng_Latn"
             results["nllb"] = False
 
     # 4. Piper TTS
@@ -158,7 +162,7 @@ def main():
         from managers.tts_manager import TTSManager
 
         tts = TTSManager(piper_dir)
-        tts.set_language("tha_Thai")
+        tts.set_language(tts_language)
         tts_path = _run_with_timeout(tts.speak, (translated, tts_out), 120)
         if tts_path and Path(tts_path).exists():
             _status("Piper TTS", True, f"{tts_path}")

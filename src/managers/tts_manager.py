@@ -1,6 +1,7 @@
 import logging
 import shutil
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,32 @@ class TTSManager:
         "kor_Hang": "ko",
         "mya_Mymr": "my",
     }
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _espeak_voices():
+        """Return the set of installed eSpeak voices."""
+        if not shutil.which("espeak-ng"):
+            return set()
+        try:
+            rc = subprocess.run(
+                ["espeak-ng", "--voices"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            if rc.returncode != 0:
+                return set()
+            voices = set()
+            for line in rc.stdout.splitlines()[1:]:  # skip header
+                parts = line.strip().split()
+                if parts:
+                    voices.add(parts[1].lower())
+                    voices.add(parts[0].lower())
+            return voices
+        except Exception:
+            return set()
 
     def __init__(self, model_dir, executable="piper"):
         self.model_dir = Path(model_dir)
@@ -53,7 +80,12 @@ class TTSManager:
         self._language = language
 
     def _espeak_lang(self) -> str | None:
-        return self._ESPEAK_LANGUAGES.get(self._language, "en") if self._language else "en"
+        base = self._ESPEAK_LANGUAGES.get(self._language, "en") if self._language else "en"
+        voices = self._espeak_voices()
+        if voices and base.lower() not in voices:
+            logger.warning("eSpeak voice '%s' not installed, falling back to 'en'", base)
+            return "en"
+        return base
 
     def _espeak_speak(self, text: str, output_path: Path) -> Path:
         if not shutil.which("espeak-ng") and not shutil.which("espeak"):
