@@ -4,12 +4,15 @@ After=docker.service
 Requires=docker.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 WorkingDirectory=/opt/translator
-ExecStart=/usr/bin/docker compose -f /opt/translator/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose -f /opt/translator/docker-compose.yml up
 ExecStop=/usr/bin/docker compose -f /opt/translator/docker-compose.yml down
 User=pi
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=120
+StartLimitBurst=3
 
 [Install]
 WantedBy=multi-user.target

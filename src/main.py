@@ -1,6 +1,8 @@
+import logging
 import os
 import sys
 import time
+import urllib.request
 
 # Ensure the project root is importable when not using PYTHONPATH
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,18 +34,22 @@ def main():
     log_mgr = LoggingManager(config)
     log_mgr.setup()
 
-    boot = BootManager(config)
-    boot.initialize()
-
     lcd = LCDManager(
         bus=config.get("lcd.i2c_bus", 1),
         address=config.get("lcd.i2c_address", 0x27),
     )
-    lcd.display("AI Translator", "Booting...")
+
+    boot = BootManager(config, lcd)
+    boot_ok = boot.initialize()
+
+    if not boot_ok:
+        lcd.display("ERROR", "Check hardware")
 
     audio = AudioManager(config)
     speech = SpeechManager(config.get("models.whisper_dir"))
     translation = TranslationManager(config.get("models.nllb_dir"))
+    if not translation.is_model_present():
+        lcd.display("ERROR", "Translation Model")
     tts = TTSManager(config.get("models.piper_dir"))
     dictionary = DictionaryManager(config.get("dictionary_path"))
     rule = RuleEngine(list(dictionary.dictionary.keys()))
@@ -69,8 +75,42 @@ def main():
         resource=resource,
     )
 
-    watchdog = WatchdogManager()
-    watchdog.add("main", check_fn=lambda: True, restart_fn=lambda: None)
+    def _api_ok():
+        try:
+            with urllib.request.urlopen(
+                "http://localhost:8080/api/status", timeout=5
+            ) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    def _ram_ok():
+        try:
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if line.startswith("MemAvailable"):
+                        kb = int(line.split()[1])
+                        return kb > 50 * 1024  # at least 50 MB available
+        except Exception:
+            return False
+        return False
+
+    def _disk_ok():
+        try:
+            st = os.statvfs("/app")
+            free = st.f_bavail * st.f_frsize
+            total = st.f_blocks * st.f_frsize
+            return (free / total) > 0.05 if total else True
+        except Exception:
+            return True
+
+    watchdog = WatchdogManager(interval=10.0, max_failures=3)
+    watchdog.add("api", _api_ok, restart_fn=lambda: logger.critical("API unresponsive; restarting"))
+    watchdog.add("whisper", speech.is_model_present, max_failures=2)
+    watchdog.add("nllb", translation.is_model_present, max_failures=2)
+    watchdog.add("piper", tts.is_model_present, max_failures=2)
+    watchdog.add("ram", _ram_ok, max_failures=1)
+    watchdog.add("disk", _disk_ok, max_failures=1)
     watchdog.start()
 
     web = WebServer(conv)
@@ -87,9 +127,12 @@ def main():
     except Exception as exc:
         print(f"[main] ButtonManager failed, continuing without GPIO: {exc}")
 
-    lcd.display("Ready", conv.source_name)
+    if boot_ok:
+        lcd.display("Ready", conv.source_name)
+    else:
+        lcd.display("ERROR", "Check hardware")
     try:
-        while True:
+        while not watchdog.is_shutdown():
             conv.idle()
             time.sleep(0.1)
     except KeyboardInterrupt:

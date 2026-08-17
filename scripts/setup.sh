@@ -12,6 +12,121 @@ PI_USER="${SUDO_USER:-${USER:-pi}}"
 
 log() { echo "[setup] $1"; }
 error() { echo "[setup] ERROR: $1" >&2; exit 1; }
+warn() { echo "[setup] WARNING: $1" >&2; }
+
+MODE="${1:-install}"
+
+# Helper: are the Docker image and /opt/translator present?
+__installed() {
+    test -d "${APP_DIR}" && test -f "${APP_DIR}/docker-compose.yml"
+}
+
+__require_installed() {
+    if ! __installed; then
+        error "AI Translator OS is not installed. Run: sudo ${0} install"
+    fi
+}
+
+run_diagnostic() {
+    __require_installed
+    log "Running hardware & AI diagnostics..."
+    docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/diagnostic.py
+}
+
+run_test_audio() {
+    __require_installed
+    log "Running audio test..."
+    docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/test_audio.py
+}
+
+run_test_lcd() {
+    __require_installed
+    log "Running LCD test..."
+    docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/test_lcd.py
+}
+
+run_test_buttons() {
+    __require_installed
+    log "Running button test..."
+    docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/test_buttons.py
+}
+
+run_test_ai() {
+    __require_installed
+    log "Running AI pipeline self-test..."
+    docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/ai_self_test.py
+}
+
+do_update() {
+    __require_installed
+    log "Updating AI Translator OS..."
+    if [[ -d "${PROJECT_ROOT}/.git" ]]; then
+        git -C "${PROJECT_ROOT}" pull || warn "git pull failed"
+    else
+        warn "No .git directory; cannot auto-update from git"
+    fi
+    log "Syncing to ${APP_DIR}..."
+    rsync -a --delete \
+        --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+        --exclude='.cache' --exclude='models' --exclude='logs' \
+        --exclude='cache' --exclude='data/history.jsonl' \
+        "${PROJECT_ROOT}/" "${APP_DIR}/" || error "rsync failed"
+    log "Rebuilding Docker image..."
+    cd "${APP_DIR}"
+    export DOCKER_BUILDKIT=0
+    docker compose build || error "Docker build failed"
+    log "Restarting..."
+    docker compose up -d || error "docker compose up failed"
+    log "Update complete"
+}
+
+do_uninstall() {
+    log "Uninstalling AI Translator OS..."
+    systemctl disable translator-os.service 2>/dev/null || true
+    systemctl stop translator-os.service 2>/dev/null || true
+    if __installed; then
+        cd "${APP_DIR}"
+        docker compose down 2>/dev/null || true
+    fi
+    rm -rf "${APP_DIR}"
+    log "Uninstalled. Run 'docker system prune' to free images"
+}
+
+show_help() {
+    cat <<'EOF'
+AI Translator OS v1.0 Setup
+
+Usage: sudo ./scripts/setup.sh [MODE]
+
+Modes:
+  install            Full install (default)
+  --diagnostic       Run hardware/AI diagnostics
+  --test-audio       Test microphone & speaker
+  --test-lcd         Test LCD1602
+  --test-buttons     Test 5 push buttons
+  --test-ai          Run AI pipeline self-test
+  --repair           Re-run install and restart
+  --update           Update repo and rebuild image
+  --uninstall        Stop, disable and remove /opt/translator
+  --help             Show this help
+EOF
+}
+
+case "$MODE" in
+    install|--install|repair|--repair)
+        FORCE_REPAIR=0
+        [[ "$MODE" == "repair" || "$MODE" == "--repair" ]] && FORCE_REPAIR=1
+        ;;
+    --diagnostic|diagnostic) run_diagnostic; exit 0 ;;
+    --test-audio) run_test_audio; exit 0 ;;
+    --test-lcd) run_test_lcd; exit 0 ;;
+    --test-buttons) run_test_buttons; exit 0 ;;
+    --test-ai|test-ai) run_test_ai; exit 0 ;;
+    --update) do_update; exit 0 ;;
+    --uninstall) do_uninstall; exit 0 ;;
+    --help|-h) show_help; exit 0 ;;
+    *) error "Unknown mode: ${MODE}. Use --help for usage." ;;
+esac
 
 # Detect architecture and choose safe build parallelism
 ARCH="$(uname -m)"
@@ -38,7 +153,11 @@ if [[ "$(uname -s)" != "Linux" ]]; then
     error "This installer is for Linux/Raspberry Pi only."
 fi
 
-log "Installing AI Translator OS to ${APP_DIR}..."
+if [[ "${FORCE_REPAIR:-0}" -eq 1 ]]; then
+    log "Repairing AI Translator OS in ${APP_DIR}..."
+else
+    log "Installing AI Translator OS to ${APP_DIR}..."
+fi
 
 # 2. Install required host packages
 log "Updating package lists and installing host dependencies..."
