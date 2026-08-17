@@ -137,8 +137,20 @@ do_repair() {
         done
     fi
 
-    # 5. Build / restart container
+    # 5. Sync latest code and rebuild image if needed
+    log "Syncing latest code to ${APP_DIR}..."
+    rsync -a --delete \
+        --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+        --exclude='.cache' --exclude='models' --exclude='logs' \
+        --exclude='cache' --exclude='data/history.jsonl' \
+        "${PROJECT_ROOT}/" "${APP_DIR}/" || error "rsync failed"
+    fix_permissions
+
+    # 6. Build / restart container
     cd "${APP_DIR}"
+    log "Building Docker image if needed..."
+    docker compose build || log "WARNING: Docker build had issues"
+
     if ! docker compose ps 2>/dev/null | grep -q "translator"; then
         log "Container not running. Starting..."
         docker compose up -d || error "docker compose up failed"
@@ -146,11 +158,11 @@ do_repair() {
         cid="$(docker compose ps -q 2>/dev/null | head -1)"
         if [[ -n "${cid}" ]]; then
             health="$(docker inspect --format='{{.State.Health.Status}}' "${cid}" 2>/dev/null)"
-            if [[ "${health}" == "unhealthy" ]]; then
-                log "Container is unhealthy. Restarting..."
-                docker compose restart
+            if [[ "${health}" == "unhealthy" ]] || [[ "${health}" == "" ]]; then
+                log "Container is unhealthy or has no health. Recreating..."
+                docker compose up -d --force-recreate
             else
-                log "Container is running (health: ${health:-unknown})"
+                log "Container is running (health: ${health})"
             fi
         fi
     fi
