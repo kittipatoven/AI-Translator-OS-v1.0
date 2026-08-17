@@ -95,22 +95,14 @@ def main():
             return False
         return False
 
-    def _disk_ok():
-        try:
-            st = os.statvfs("/app")
-            free = st.f_bavail * st.f_frsize
-            total = st.f_blocks * st.f_frsize
-            return (free / total) > 0.05 if total else True
-        except Exception:
-            return True
-
     watchdog = WatchdogManager(interval=10.0, max_failures=3)
-    watchdog.add("api", _api_ok, restart_fn=lambda: logger.critical("API unresponsive; restarting"))
+    watchdog.add("health", _api_ok, restart_fn=lambda: logger.critical("API unresponsive; restarting"))
     watchdog.add("whisper", speech.is_model_present, max_failures=2)
     watchdog.add("nllb", translation.is_model_present, max_failures=2)
     watchdog.add("piper", tts.is_model_present, max_failures=2)
     watchdog.add("ram", _ram_ok, max_failures=1)
-    watchdog.add("disk", _disk_ok, max_failures=1)
+    watchdog.add("disk", resource.is_disk_critical, max_failures=1)
+    watchdog.add("throttle", resource.is_throttled, max_failures=3)
     watchdog.start()
 
     web = WebServer(conv)

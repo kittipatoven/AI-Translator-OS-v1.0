@@ -60,7 +60,7 @@ run_test_buttons() {
 run_test_ai() {
     __require_installed
     log "Running AI pipeline self-test..."
-    docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/ai_self_test.py
+    docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/test_ai_pipeline.py
 }
 
 run_status() {
@@ -96,6 +96,80 @@ do_update() {
     log "Update complete"
 }
 
+do_repair() {
+    log "Starting smart repair..."
+
+    if ! command -v docker &>/dev/null; then
+        error "Docker not installed. Run: sudo ${0} install"
+    fi
+
+    # 1. Ensure Docker is running
+    if ! systemctl is-active --quiet docker 2>/dev/null; then
+        log "Docker not running. Starting..."
+        systemctl start docker 2>/dev/null || error "Cannot start Docker"
+    fi
+
+    # 2. Ensure install directory exists
+    if [[ ! -d "${APP_DIR}" ]]; then
+        error "${APP_DIR} not found. Run: sudo ${0} install"
+    fi
+
+    # 3. Fix permissions
+    fix_permissions
+
+    # 4. Restore missing models from bundled archive if present
+    missing=0
+    for d in whisper nllb piper; do
+        if [[ -z "$(ls -A "${APP_DIR}/models/${d}" 2>/dev/null)" ]]; then
+            missing=1
+        fi
+    done
+    if [[ ${missing} -eq 1 ]]; then
+        log "Some models are missing. Looking for models.tar.gz..."
+        for tar_path in "${PROJECT_ROOT}/models.tar.gz" "/home/${PI_USER}/models.tar.gz" "${APP_DIR}/models.tar.gz"; do
+            if [[ -f "${tar_path}" ]]; then
+                log "Restoring models from ${tar_path}..."
+                rm -rf "${APP_DIR}/models"
+                mkdir -p "${APP_DIR}/models"
+                tar -xzf "${tar_path}" -C "${APP_DIR}/models/" || log "WARNING: failed to extract models"
+                break
+            fi
+        done
+    fi
+
+    # 5. Build / restart container
+    cd "${APP_DIR}"
+    if ! docker compose ps 2>/dev/null | grep -q "translator"; then
+        log "Container not running. Starting..."
+        docker compose up -d || error "docker compose up failed"
+    else
+        cid="$(docker compose ps -q 2>/dev/null | head -1)"
+        if [[ -n "${cid}" ]]; then
+            health="$(docker inspect --format='{{.State.Health.Status}}' "${cid}" 2>/dev/null)"
+            if [[ "${health}" == "unhealthy" ]]; then
+                log "Container is unhealthy. Restarting..."
+                docker compose restart
+            else
+                log "Container is running (health: ${health:-unknown})"
+            fi
+        fi
+    fi
+
+    # 6. Ensure systemd auto-start is installed
+    if [[ ! -f /etc/systemd/system/translator-os.service ]]; then
+        log "systemd service missing. Reinstalling..."
+        cp "${APP_DIR}/scripts/translator-os.service" /etc/systemd/system/translator-os.service
+        sed -i "s|WorkingDirectory=.*|WorkingDirectory=${APP_DIR}|" /etc/systemd/system/translator-os.service
+        sed -i "s|ExecStart=.*|ExecStart=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yml up|" /etc/systemd/system/translator-os.service
+        sed -i "s|ExecStop=.*|ExecStop=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yml down|" /etc/systemd/system/translator-os.service
+        systemctl daemon-reload
+        systemctl enable translator-os.service
+    fi
+    systemctl restart translator-os.service 2>/dev/null || log "WARNING: could not restart systemd service"
+
+    log "Smart repair complete. Check status with: ${0} --status"
+}
+
 do_uninstall() {
     log "Uninstalling AI Translator OS..."
     systemctl disable translator-os.service 2>/dev/null || true
@@ -122,7 +196,7 @@ Modes:
   --test-buttons     Test 5 push buttons
   --test-ai          Run AI pipeline self-test
   --status           Show system and container status
-  --repair           Re-run install and restart
+  --repair           Smart repair: Docker, container, models, service
   --update           Update repo and rebuild image
   --uninstall        Stop, disable and remove /opt/translator
   --help             Show this help
@@ -130,9 +204,7 @@ EOF
 }
 
 case "$MODE" in
-    install|--install|repair|--repair)
-        FORCE_REPAIR=0
-        [[ "$MODE" == "repair" || "$MODE" == "--repair" ]] && FORCE_REPAIR=1
+    install|--install)
         ;;
     --diagnostic|diagnostic) run_diagnostic; exit 0 ;;
     --test-audio) run_test_audio; exit 0 ;;
@@ -140,6 +212,7 @@ case "$MODE" in
     --test-buttons) run_test_buttons; exit 0 ;;
     --test-ai|test-ai) run_test_ai; exit 0 ;;
     --status) run_status; exit 0 ;;
+    --repair|repair) do_repair; exit 0 ;;
     --update) do_update; exit 0 ;;
     --uninstall) do_uninstall; exit 0 ;;
     --help|-h) show_help; exit 0 ;;
