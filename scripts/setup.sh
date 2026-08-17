@@ -63,6 +63,15 @@ run_test_ai() {
     docker compose -f "${APP_DIR}/docker-compose.yml" run --rm translator python /app/scripts/ai_self_test.py
 }
 
+run_status() {
+    if ! __installed; then
+        log "AI Translator OS is not installed in ${APP_DIR}."
+        log "Run: sudo ${0} install"
+        exit 1
+    fi
+    python3 "${APP_DIR}/scripts/status.py"
+}
+
 do_update() {
     __require_installed
     log "Updating AI Translator OS..."
@@ -112,6 +121,7 @@ Modes:
   --test-lcd         Test LCD1602
   --test-buttons     Test 5 push buttons
   --test-ai          Run AI pipeline self-test
+  --status           Show system and container status
   --repair           Re-run install and restart
   --update           Update repo and rebuild image
   --uninstall        Stop, disable and remove /opt/translator
@@ -129,6 +139,7 @@ case "$MODE" in
     --test-lcd) run_test_lcd; exit 0 ;;
     --test-buttons) run_test_buttons; exit 0 ;;
     --test-ai|test-ai) run_test_ai; exit 0 ;;
+    --status) run_status; exit 0 ;;
     --update) do_update; exit 0 ;;
     --uninstall) do_uninstall; exit 0 ;;
     --help|-h) show_help; exit 0 ;;
@@ -177,24 +188,31 @@ for svc in packagekit packagekitd apt-daily apt-daily-upgrade; do
     fi
 done
 
-# Force-kill any remaining package manager processes
-for p in packagekitd apt-daily apt-daily-upgrade; do
-    pids="$(pgrep -x "${p}" 2>/dev/null || true)"
-    if [[ -n "${pids}" ]]; then
-        log "Killing remaining ${p} processes..."
-        kill -9 ${pids} 2>/dev/null || true
-    fi
-done
+# Helper: wait for apt/dpkg/package manager locks to clear
+_apt_locked() {
+    for lock in /var/lib/apt/lists/lock /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/cache/apt/archives/lock; do
+        if [[ -e "${lock}" ]]; then
+            if command -v fuser &>/dev/null; then
+                fuser -s "${lock}" 2>/dev/null && return 0
+            else
+                return 0
+            fi
+        fi
+    done
+    for p in apt apt-get dpkg unattended-upgrade packagekit packagekitd apt-daily apt-daily-upgrade; do
+        pgrep -x "${p}" &>/dev/null && return 0
+    done
+    return 1
+}
 
-# Wait up to 60s for apt lists lock
-for i in $(seq 1 60); do
-    if [[ ! -e /var/lib/apt/lists/lock ]] || ! pgrep -x packagekitd >/dev/null 2>&1; then
+# Wait up to 90s for package manager locks to clear
+for i in $(seq 1 90); do
+    if ! _apt_locked; then
         break
     fi
-    log "Waiting for apt lock... ${i}s"
+    log "Waiting for apt/dpkg lock to clear... ${i}s"
     sleep 1
 done
-sleep 2
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -209,16 +227,19 @@ Acquire::Retries "3";
 Acquire::http::Pipeline-Depth "0";
 EOF
 
-if ! apt-get update -q; then
-    log "Primary apt source failed, switching to fallback mirror..."
-    for f in /etc/apt/sources.list.d/*.list /etc/apt/sources.list; do
-        if [[ -f "${f}" ]]; then
-            sed -i 's|raspbian.raspberrypi.com|mirror.debian.org|g' "${f}"
-        fi
-    done
-    apt-get clean
-    apt-get update -q || error "apt-get update failed with fallback mirror"
+APT_UPDATE_OK=0
+for attempt in 1 2 3; do
+    if apt-get update -q; then
+        APT_UPDATE_OK=1
+        break
+    fi
+    log "apt-get update attempt ${attempt} failed, retrying..."
+    sleep 3
+done
+if [[ ${APT_UPDATE_OK} -ne 1 ]]; then
+    error "apt-get update failed after 3 attempts. Check network and /etc/apt/sources.list"
 fi
+
 apt-get install -y -q --no-install-recommends \
     curl rsync i2c-tools alsa-utils git \
     build-essential cmake libopenblas-dev libgomp1 libatomic1 \
