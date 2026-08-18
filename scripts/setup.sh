@@ -167,16 +167,14 @@ do_repair() {
         fi
     fi
 
-    # 6. Ensure systemd auto-start is installed
-    if [[ ! -f /etc/systemd/system/translator-os.service ]]; then
-        log "systemd service missing. Reinstalling..."
-        cp "${APP_DIR}/scripts/translator-os.service" /etc/systemd/system/translator-os.service
-        sed -i "s|WorkingDirectory=.*|WorkingDirectory=${APP_DIR}|" /etc/systemd/system/translator-os.service
-        sed -i "s|ExecStart=.*|ExecStart=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yml up|" /etc/systemd/system/translator-os.service
-        sed -i "s|ExecStop=.*|ExecStop=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yml down|" /etc/systemd/system/translator-os.service
-        systemctl daemon-reload
-        systemctl enable translator-os.service
-    fi
+    # 6. Ensure / refresh systemd auto-start
+    log "Installing/refresing systemd auto-start service..."
+    cp "${APP_DIR}/scripts/translator-os.service" /etc/systemd/system/translator-os.service
+    sed -i "s|WorkingDirectory=.*|WorkingDirectory=${APP_DIR}|" /etc/systemd/system/translator-os.service
+    sed -i "s|ExecStart=.*|ExecStart=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yml up -d|" /etc/systemd/system/translator-os.service
+    sed -i "s|ExecStop=.*|ExecStop=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yml down|" /etc/systemd/system/translator-os.service
+    systemctl daemon-reload
+    systemctl enable translator-os.service
     systemctl restart translator-os.service 2>/dev/null || log "WARNING: could not restart systemd service"
 
     log "Smart repair complete. Check status with: ${0} --status"
