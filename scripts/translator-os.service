@@ -1,14 +1,20 @@
 [Unit]
 Description=AI Translator OS
-After=docker.service
+After=docker.service network-online.target
+Wants=docker.service network-online.target
 Requires=docker.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/translator
+User=pi
+Group=pi
 ExecStart=/usr/bin/docker compose -f /opt/translator/docker-compose.yml up -d
 ExecStop=/usr/bin/docker compose -f /opt/translator/docker-compose.yml down
+ExecReload=/usr/bin/docker compose -f /opt/translator/docker-compose.yml restart
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

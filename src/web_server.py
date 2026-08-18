@@ -307,6 +307,69 @@ class WebServer:
             except Exception as exc:
                 return jsonify({"error": str(exc)}), 500
 
+        @app.route("/api/health")
+        def health():
+            return jsonify({"status": "ok"}), 200
+
+        @app.route("/api/start-listening", methods=["POST"])
+        def start_listening():
+            data = request.get_json(silent=True) or {}
+            duration = data.get("duration")
+            use_vad = data.get("use_vad", False)
+            try:
+                if duration is not None:
+                    duration = max(1, min(int(duration), 60))
+            except (ValueError, TypeError):
+                duration = None
+            self.conv.start_listening(duration=duration, use_vad=use_vad)
+            return jsonify(self.conv.get_status())
+
+        @app.route("/api/replay", methods=["POST"])
+        def replay():
+            self.conv.replay()
+            return jsonify(self.conv.get_status())
+
+        @app.route("/api/next-language", methods=["POST"])
+        def next_language():
+            self.conv.next_language()
+            return jsonify(self.conv.get_status())
+
+        @app.route("/api/previous-language", methods=["POST"])
+        def previous_language():
+            self.conv.previous_language()
+            return jsonify(self.conv.get_status())
+
+        @app.route("/api/menu", methods=["POST"])
+        def menu():
+            self.conv.toggle_menu()
+            return jsonify(self.conv.get_status())
+
+        @app.route("/api/shutdown", methods=["POST"])
+        def shutdown():
+            data = request.get_json(silent=True) or {}
+            if data.get("allowed", True) is not True:
+                return jsonify({"error": "Shutdown not allowed"}), 403
+            self.conv.lcd.display("Shutting down", "")
+            import threading
+
+            def _shutdown():
+                time.sleep(1)
+                os.system("poweroff")
+
+            threading.Thread(target=_shutdown, daemon=True).start()
+            return jsonify({"status": "shutting down"})
+
+        @app.route("/api/restart", methods=["POST"])
+        def restart():
+            import threading
+
+            def _restart():
+                time.sleep(1)
+                os._exit(0)
+
+            threading.Thread(target=_restart, daemon=True).start()
+            return jsonify({"status": "restarting"})
+
         return app
 
     def _translate_audio(self, audio_file):

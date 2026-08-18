@@ -56,5 +56,7 @@ COPY config/ /app/config/
 
 ENV PYTHONPATH=/app/src
 ENV CONFIG_PATH=/app/config/config.json
+ENV MALLOC_ARENA_MAX=2
+ENV PYTHONMALLOC=malloc
 
 CMD ["python", "/app/src/main.py"]
