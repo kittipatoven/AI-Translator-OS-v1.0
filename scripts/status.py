@@ -94,8 +94,8 @@ def check_lcd():
     rc = _run(["i2cdetect", "-y", "1"], timeout=5)
     if rc.returncode != 0:
         return False, "I2C error"
-    addrs = ["0x27", "0x3f", "0x3F"]
-    if any(a in rc.stdout for a in addrs):
+    addrs = ["0x27", "0x3f", "0x3F", "27", "3f", "3F"]
+    if any(f" {a} " in rc.stdout or f"\n{a} " in rc.stdout or a in rc.stdout for a in addrs):
         return True, "0x27 / 0x3F"
     return False, "not detected"
 
